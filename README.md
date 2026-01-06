@@ -48,8 +48,19 @@ REPO_NAMES = [
 
 ### Files
 
+**Config:**
 - `config/config.json` - local code base path (gitignored)
 - `config/repo_config.py` - list of repositories to analyze
+
+**Scripts:**
+- `scripts/init.py` - first-time setup wizard
+- `scripts/update.py` - weekly automation script
+- `scripts/get_neptune_web_releases.py` - extract neptune-web releases
+- `scripts/analyze_adoption_patterns.py` - generate dashboard
+
+**Data:**
 - `data/component_releases.json` - neptune-web releases over time
-- `site/adoption_data.json` - data for dashboard
-- `site/index.html` - markup for dashboard
+
+**Github Pages Site:**
+- `site/adoption_data.json` - dashboard data
+- `site/index.html` - interactive dashboard

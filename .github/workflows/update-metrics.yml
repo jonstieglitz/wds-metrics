@@ -1,0 +1,77 @@
+name: Update WDS Metrics
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9am UTC
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+      
+      - name: Create config directory and file
+        run: |
+          mkdir -p config
+          echo '{"code_base_path": "/tmp/wds-repos"}' > config/config.json
+      
+      - name: Clone repositories
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/wds-repos
+          cd /tmp/wds-repos
+          
+          # Read repo names from config and clone each
+          python3 << 'EOF'
+          import sys
+          sys.path.insert(0, '${{ github.workspace }}')
+          from config.repo_config import REPO_NAMES, GITHUB_BASE_URL
+          import subprocess
+          
+          for repo_name in REPO_NAMES:
+              print(f"Cloning {repo_name}...")
+              url = f"{GITHUB_BASE_URL}/{repo_name}.git"
+              try:
+                  subprocess.run(
+                      ["git", "clone", "--depth", "1", url, repo_name],
+                      check=True,
+                      capture_output=True
+                  )
+                  print(f"✅ Cloned {repo_name}")
+              except subprocess.CalledProcessError as e:
+                  print(f"⚠️ Failed to clone {repo_name}: {e.stderr.decode()}")
+          EOF
+      
+      - name: Run update script
+        run: |
+          cd ${{ github.workspace }}
+          python3 scripts/update.py
+      
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ site/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update metrics data [skip ci]"
+            git push
+          fi
