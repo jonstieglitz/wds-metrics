@@ -13,6 +13,11 @@ import argparse
 import csv
 import re
 
+# Add parent directory to path so we can import config module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config.config import get_code_base_path
+
 
 class ComponentReleaseExtractor:
     """Extract component release information from neptune-web repository."""
@@ -268,30 +273,53 @@ class ComponentReleaseExtractor:
         return filename
     
     def export_to_json(self, versions: list, filename: str = None):
-        """Export versions to JSON."""
+        """Export versions to JSON, merging with existing data if present."""
         if not filename:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"component_releases_{timestamp}.json"
+            filename = "data/component_releases.json"
+        
+        # Load existing data if file exists
+        existing_versions = {}
+        if Path(filename).exists():
+            try:
+                with open(filename, 'r') as f:
+                    existing_data = json.load(f)
+                    # Create a map of existing versions by version number
+                    for v in existing_data.get('versions', []):
+                        existing_versions[v['version']] = v
+                print(f"📂 Loaded {len(existing_versions)} existing versions")
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"⚠️  Could not load existing file: {e}. Creating new file.")
+        
+        # Merge new versions with existing ones
+        for v in versions:
+            version_key = v['version']
+            new_entry = {
+                "version": version_key,
+                "release_date": v['date'].isoformat(),
+                "tag": v.get('tag', ''),
+                "commit": v.get('commit', '')
+            }
+            # Add or update the version
+            existing_versions[version_key] = new_entry
+        
+        # Sort versions by release date (newest first)
+        sorted_versions = sorted(
+            existing_versions.values(),
+            key=lambda x: x['release_date'],
+            reverse=True
+        )
         
         output = {
             "package": "@transferwise/components",
             "source_repository": str(self.repo_path),
             "generated_at": datetime.now().isoformat(),
-            "versions": [
-                {
-                    "version": v['version'],
-                    "release_date": v['date'].isoformat(),
-                    "tag": v.get('tag', ''),
-                    "commit": v.get('commit', '')
-                }
-                for v in versions
-            ]
+            "versions": sorted_versions
         }
         
         with open(filename, 'w') as f:
             json.dump(output, f, indent=2)
         
-        print(f"💾 Exported to {filename}")
+        print(f"💾 Saved {len(sorted_versions)} versions to {filename}")
         return filename
 
 
@@ -301,8 +329,8 @@ def main():
     )
     parser.add_argument(
         "--repo",
-        default="/Users/jonathan.stieglitz/Code/neptune-web",
-        help="Path to neptune-web repository"
+        default=None,
+        help="Path to neptune-web repository (default: <code_base_path>/neptune-web)"
     )
     parser.add_argument(
         "--years",
@@ -328,15 +356,22 @@ def main():
     
     args = parser.parse_args()
     
+    # Determine repo path
+    if args.repo:
+        repo_path = args.repo
+    else:
+        code_base_path = get_code_base_path()
+        repo_path = code_base_path / "neptune-web"
+    
     # Calculate date range
     since_date = datetime.now() - timedelta(days=args.years * 365)
     
-    print(f"Extracting @transferwise/components versions from: {args.repo}")
+    print(f"Extracting @transferwise/components versions from: {repo_path}")
     print(f"Looking back {args.years} years (since {since_date.strftime('%Y-%m-%d')})")
     print("-" * 50)
     
     try:
-        extractor = ComponentReleaseExtractor(args.repo)
+        extractor = ComponentReleaseExtractor(repo_path)
         
         if args.use_commits:
             print("Using package.json commit history...")

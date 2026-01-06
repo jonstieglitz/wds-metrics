@@ -1,8 +1,50 @@
 {
   "package": "@transferwise/components",
-  "source_repository": "/Users/jonathan.stieglitz/Code/neptune-web",
-  "generated_at": "2025-12-18T13:00:49.623708",
+  "source_repository": "/Users/jonathan.stieglitz/Code/metrics/neptune-web",
+  "generated_at": "2026-01-06T14:22:14.644114",
   "versions": [
+    {
+      "version": "46.119.3",
+      "release_date": "2026-01-06T16:00:59",
+      "tag": "@transferwise/components@46.119.3",
+      "commit": ""
+    },
+    {
+      "version": "46.119.2",
+      "release_date": "2026-01-06T10:09:25",
+      "tag": "@transferwise/components@46.119.2",
+      "commit": ""
+    },
+    {
+      "version": "46.119.0",
+      "release_date": "2026-01-05T10:52:13",
+      "tag": "@transferwise/components@46.119.0",
+      "commit": ""
+    },
+    {
+      "version": "46.118.0",
+      "release_date": "2025-12-22T20:51:03",
+      "tag": "@transferwise/components@46.118.0",
+      "commit": ""
+    },
+    {
+      "version": "46.117.1",
+      "release_date": "2025-12-22T18:12:45",
+      "tag": "@transferwise/components@46.117.1",
+      "commit": ""
+    },
+    {
+      "version": "46.117.0",
+      "release_date": "2025-12-22T08:56:24",
+      "tag": "@transferwise/components@46.117.0",
+      "commit": ""
+    },
+    {
+      "version": "46.116.1",
+      "release_date": "2025-12-11T14:12:53",
+      "tag": "@transferwise/components@46.116.1",
+      "commit": ""
+    },
     {
       "version": "46.116.0",
       "release_date": "2025-12-08T11:46:34",
@@ -2449,150 +2491,6 @@
       "version": "43.6.8",
       "release_date": "2023-01-06T16:13:56",
       "tag": "@transferwise/components@43.6.8",
-      "commit": ""
-    },
-    {
-      "version": "43.6.7",
-      "release_date": "2023-01-06T10:22:02",
-      "tag": "@transferwise/components@43.6.7",
-      "commit": ""
-    },
-    {
-      "version": "43.6.6",
-      "release_date": "2023-01-05T21:53:26",
-      "tag": "@transferwise/components@43.6.6",
-      "commit": ""
-    },
-    {
-      "version": "43.6.5",
-      "release_date": "2023-01-05T14:47:46",
-      "tag": "@transferwise/components@43.6.5",
-      "commit": ""
-    },
-    {
-      "version": "43.6.4",
-      "release_date": "2023-01-05T13:40:56",
-      "tag": "@transferwise/components@43.6.4",
-      "commit": ""
-    },
-    {
-      "version": "43.6.3",
-      "release_date": "2023-01-05T13:17:41",
-      "tag": "@transferwise/components@43.6.3",
-      "commit": ""
-    },
-    {
-      "version": "43.6.2",
-      "release_date": "2023-01-04T23:06:34",
-      "tag": "@transferwise/components@43.6.2",
-      "commit": ""
-    },
-    {
-      "version": "43.6.1",
-      "release_date": "2023-01-02T17:25:32",
-      "tag": "@transferwise/components@43.6.1",
-      "commit": ""
-    },
-    {
-      "version": "43.6.0",
-      "release_date": "2023-01-02T14:53:33",
-      "tag": "@transferwise/components@43.6.0",
-      "commit": ""
-    },
-    {
-      "version": "43.5.0",
-      "release_date": "2022-12-30T21:39:25",
-      "tag": "@transferwise/components@43.5.0",
-      "commit": ""
-    },
-    {
-      "version": "43.4.1",
-      "release_date": "2022-12-30T21:01:37",
-      "tag": "@transferwise/components@43.4.1",
-      "commit": ""
-    },
-    {
-      "version": "43.4.0",
-      "release_date": "2022-12-30T16:30:37",
-      "tag": "@transferwise/components@43.4.0",
-      "commit": ""
-    },
-    {
-      "version": "43.3.4",
-      "release_date": "2022-12-30T15:43:00",
-      "tag": "@transferwise/components@43.3.4",
-      "commit": ""
-    },
-    {
-      "version": "43.3.3",
-      "release_date": "2022-12-30T14:45:26",
-      "tag": "@transferwise/components@43.3.3",
-      "commit": ""
-    },
-    {
-      "version": "43.3.2",
-      "release_date": "2022-12-30T14:14:57",
-      "tag": "@transferwise/components@43.3.2",
-      "commit": ""
-    },
-    {
-      "version": "43.3.1",
-      "release_date": "2022-12-30T11:47:58",
-      "tag": "@transferwise/components@43.3.1",
-      "commit": ""
-    },
-    {
-      "version": "43.3.0",
-      "release_date": "2022-12-28T19:14:55",
-      "tag": "@transferwise/components@43.3.0",
-      "commit": ""
-    },
-    {
-      "version": "43.2.3",
-      "release_date": "2022-12-22T15:35:00",
-      "tag": "@transferwise/components@43.2.3",
-      "commit": ""
-    },
-    {
-      "version": "43.2.2",
-      "release_date": "2022-12-21T14:03:39",
-      "tag": "@transferwise/components@43.2.2",
-      "commit": ""
-    },
-    {
-      "version": "43.2.1",
-      "release_date": "2022-12-20T20:43:49",
-      "tag": "@transferwise/components@43.2.1",
-      "commit": ""
-    },
-    {
-      "version": "43.2.0",
-      "release_date": "2022-12-19T21:32:26",
-      "tag": "@transferwise/components@43.2.0",
-      "commit": ""
-    },
-    {
-      "version": "43.1.25",
-      "release_date": "2022-12-19T20:02:15",
-      "tag": "@transferwise/components@43.1.25",
-      "commit": ""
-    },
-    {
-      "version": "43.1.24",
-      "release_date": "2022-12-19T19:26:07",
-      "tag": "@transferwise/components@43.1.24",
-      "commit": ""
-    },
-    {
-      "version": "43.1.23",
-      "release_date": "2022-12-19T18:47:29",
-      "tag": "@transferwise/components@43.1.23",
-      "commit": ""
-    },
-    {
-      "version": "43.1.22",
-      "release_date": "2022-12-19T17:56:38",
-      "tag": "@transferwise/components@43.1.22",
       "commit": ""
     }
   ]

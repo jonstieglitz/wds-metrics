@@ -1,0 +1,11 @@
+{
+  "name": "wds-metrics",
+  "version": "1.0.0",
+  "description": "WDS component adoption metrics and analysis tools",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "init": "python3 scripts/init.py",
+    "update": "python3 scripts/update.py",
+    "dev": "open http://localhost:3000/site/ && python3 -m http.server 3000"
+  }
+}

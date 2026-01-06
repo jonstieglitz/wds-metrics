@@ -15,31 +15,13 @@ import argparse
 import csv
 from typing import Dict, List, Optional, Tuple
 import statistics
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Add parent directory to path so we can import config module
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Repository configuration - define repo names once
-REPO_NAMES = [
-    'account-page',
-    'account-spend-web',
-    'balance-flows-web',
-    'balance-pages',
-    'batch-payments-flow',
-    'bills-page',
-    'bulk-send-flow',
-    'business-onboarding',
-    'card-form',
-    'hat-contact-form',
-    'multi-currency-account-homepage',
-    'partner-integration-flow',
-    'recipients-page',
-    'request-payer-page',
-    'send-flow',
-    'twcard-order-web',
-]
-
-# Base paths
-CODE_BASE_PATH = Path("/Users/jonathan.stieglitz/Code")
-GITHUB_BASE_URL = "https://github.com/transferwise"
+from config.config import get_code_base_path
+from config.repo_config import REPO_NAMES, GITHUB_BASE_URL
 
 
 class AdoptionAnalyzer:
@@ -71,15 +53,15 @@ class AdoptionAnalyzer:
         print(f"Loaded {len(self.releases)} releases")
     
     def get_repo_adoptions(self, repo_path: Path, months: int = 36):
-        """Extract adoption history for a repository."""
+        """Extract adoption history for a repository using optimized batch git operations."""
         repo_name = repo_path.name
         since_date = datetime.now() - timedelta(days=months * 30)
         
-        # Get commits that modified package.json
+        # Use git log with -p to get all changes in one command
         cmd = [
-            "git", "log", "--format=%H|%ai", "--reverse",
+            "git", "log", "--format=%H|%ai|%s", "--reverse",
             f"--since={since_date.isoformat()}",
-            "--", "package.json"
+            "-p", "--", "package.json"
         ]
         
         try:
@@ -91,41 +73,44 @@ class AdoptionAnalyzer:
                 check=True
             )
             
-            commits = result.stdout.strip().split('\n')
-            commits = [c for c in commits if c]
-            
             adoptions = []
             last_version = None
             
-            for commit_line in commits:
-                if not commit_line:
-                    continue
+            # Parse the output to extract version changes
+            lines = result.stdout.split('\n')
+            current_commit = None
+            current_date = None
+            
+            for line in lines:
+                # Check for commit header
+                if '|' in line and not line.startswith('+') and not line.startswith('-'):
+                    parts = line.split('|')
+                    if len(parts) >= 2:
+                        current_commit = parts[0]
+                        date_str = parts[1]
+                        try:
+                            current_date = datetime.strptime(
+                                date_str.split()[0] + " " + date_str.split()[1],
+                                "%Y-%m-%d %H:%M:%S"
+                            )
+                        except (ValueError, IndexError):
+                            continue
                 
-                parts = commit_line.split('|')
-                if len(parts) != 2:
-                    continue
-                
-                commit_hash = parts[0]
-                date_str = parts[1]
-                
-                # Parse date
-                date_obj = datetime.strptime(
-                    date_str.split()[0] + " " + date_str.split()[1],
-                    "%Y-%m-%d %H:%M:%S"
-                )
-                
-                # Get package.json at this commit
-                version = self.get_version_at_commit(repo_path, commit_hash)
-                
-                if version and version != last_version:
-                    clean_version = version.lstrip('^~')
-                    adoptions.append({
-                        'version': clean_version,
-                        'raw_version': version,
-                        'adoption_date': date_obj,
-                        'commit': commit_hash[:8]
-                    })
-                    last_version = version
+                # Look for version changes in the diff
+                if current_commit and current_date and line.startswith('+'):
+                    # Check for @transferwise/components version
+                    if '"@transferwise/components"' in line or '"@transferwise/components":' in line:
+                        # Extract version from the line
+                        version = self._extract_version_from_line(line)
+                        if version and version != last_version:
+                            clean_version = version.lstrip('^~')
+                            adoptions.append({
+                                'version': clean_version,
+                                'raw_version': version,
+                                'adoption_date': current_date,
+                                'commit': current_commit[:8]
+                            })
+                            last_version = version
             
             self.repo_adoptions[repo_name] = adoptions
             return adoptions
@@ -134,8 +119,27 @@ class AdoptionAnalyzer:
             print(f"Error processing {repo_name}: {e}")
             return []
     
+    def _extract_version_from_line(self, line: str) -> Optional[str]:
+        """Extract version number from a git diff line."""
+        try:
+            # Remove the leading '+' and whitespace
+            line = line.lstrip('+ \t')
+            
+            # Try to parse as JSON to extract the version
+            if ':' in line:
+                # Handle lines like: "@transferwise/components": "^46.115.1",
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    version_part = parts[1].strip().strip(',').strip('"').strip("'")
+                    if version_part and version_part[0] in '^~0123456789':
+                        return version_part
+            
+            return None
+        except Exception:
+            return None
+    
     def get_version_at_commit(self, repo_path: Path, commit_hash: str) -> Optional[str]:
-        """Get package version at specific commit."""
+        """Get package version at specific commit (fallback method, not used in optimized version)."""
         try:
             result = subprocess.run(
                 ["git", "show", f"{commit_hash}:package.json"],
@@ -254,7 +258,7 @@ class AdoptionAnalyzer:
         except (ValueError, IndexError):
             return (0, 0, 0)
 
-    def generate_dashboard_data_json(self, metrics: Dict, filename: str = "adoption_data.json"):
+    def generate_dashboard_data_json(self, metrics: Dict, filename: str = "site/adoption_data.json"):
         data = {
             'generated_at': datetime.now().isoformat(timespec='minutes'),
             'repo_github_urls': self.repo_github_urls,
@@ -286,97 +290,15 @@ class AdoptionAnalyzer:
         }
 
         with open(filename, 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=2)
 
         print(f"📊 Dashboard data saved to {filename}")
-        return filename
-    
-    def generate_timeline_csv(self, filename: str = None):
-        """Generate CSV for timeline visualization."""
-        if not filename:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"adoption_timeline_{timestamp}.csv"
-        
-        rows = []
-        
-        # Add all releases
-        for version, release_info in self.releases.items():
-            rows.append({
-                'date': release_info['date'].strftime('%Y-%m-%d'),
-                'event_type': 'release',
-                'version': version,
-                'repository': 'neptune-web',
-                'lag_days': 0,
-                'notes': 'Component released'
-            })
-        
-        # Add all adoptions
-        for repo_name, adoptions in self.repo_adoptions.items():
-            for adoption in adoptions:
-                version = adoption['version']
-                if version in self.releases:
-                    release_date = self.releases[version]['date']
-                    lag = (adoption['adoption_date'] - release_date).days
-                    
-                    rows.append({
-                        'date': adoption['adoption_date'].strftime('%Y-%m-%d'),
-                        'event_type': 'adoption',
-                        'version': version,
-                        'repository': repo_name,
-                        'lag_days': lag,
-                        'notes': f"Adopted after {lag} days"
-                    })
-        
-        # Sort by date
-        rows.sort(key=lambda x: x['date'])
-        
-        # Write CSV
-        with open(filename, 'w', newline='') as csvfile:
-            fieldnames = ['date', 'event_type', 'version', 'repository', 'lag_days', 'notes']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-        
-        print(f"📊 Timeline CSV saved to {filename}")
-        return filename
-    
-    def generate_comparison_csv(self, metrics: Dict, filename: str = None):
-        """Generate CSV comparing the two repositories."""
-        if not filename:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"repo_comparison_{timestamp}.csv"
-        
-        rows = []
-        
-        for repo_name, repo_metrics in metrics.items():
-            for version_info in repo_metrics['versions']:
-                rows.append({
-                    'repository': repo_name,
-                    'version': version_info['version'],
-                    'release_date': version_info['release_date'][:10],
-                    'adoption_date': version_info['adoption_date'][:10],
-                    'lag_days': version_info['lag_days'],
-                    'versions_skipped': version_info.get('versions_skipped', 0),
-                    'days_since_last_update': version_info.get('days_since_last_update', 0)
-                })
-        
-        # Sort by adoption date
-        rows.sort(key=lambda x: x['adoption_date'])
-        
-        with open(filename, 'w', newline='') as csvfile:
-            fieldnames = ['repository', 'version', 'release_date', 'adoption_date', 
-                         'lag_days', 'versions_skipped', 'days_since_last_update']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-        
-        print(f"📊 Comparison CSV saved to {filename}")
         return filename
     
     def generate_html_dashboard(self, metrics: Dict, filename: str = None):
         """Generate an HTML dashboard with charts."""
         if not filename:
-            filename = "adoption_dashboard.html"
+            filename = "site/index.html"
         
         html = f"""
 <!DOCTYPE html>
@@ -1010,8 +932,8 @@ class AdoptionAnalyzer:
 def main():
     parser = argparse.ArgumentParser(description="Analyze adoption patterns for @transferwise/components")
     parser.add_argument("--releases", 
-                       default="component_releases_20251218_130049.json",
-                       help="JSON file with release data")
+                       default=None,
+                       help="JSON file with release data (default: most recent component_releases_*.json)")
     parser.add_argument("--months", type=int, default=36,
                        help="Number of months to analyze")
     
@@ -1019,12 +941,22 @@ def main():
     
     analyzer = AdoptionAnalyzer()
     
+    # Determine which releases file to use
+    releases_file = args.releases
+    if not releases_file:
+        releases_file = "data/component_releases.json"
+        if not Path(releases_file).exists():
+            print("❌ No component releases file found.")
+            print("Please run 'python3 scripts/get_neptune_web_releases.py --json' first.")
+            return 1
+    
     # Load release data
     print("Loading release data...")
-    analyzer.load_releases(args.releases)
+    analyzer.load_releases(str(releases_file))
     
     # Generate repository paths from REPO_NAMES constant
-    repos = [CODE_BASE_PATH / repo_name for repo_name in REPO_NAMES]
+    code_base_path = get_code_base_path()
+    repos = [code_base_path / repo_name for repo_name in REPO_NAMES]
     
     # Filter to only repos that exist
     existing_repos = [repo for repo in repos if repo.exists()]
@@ -1036,9 +968,20 @@ def main():
             print(f"    - {repo.name}")
     
     print(f"\nAnalyzing {len(existing_repos)} repositories for {args.months} months...")
-    for repo in existing_repos:
+    
+    # Process repositories in parallel for better performance
+    def process_repo(repo):
         print(f"  Processing {repo.name}...")
-        analyzer.get_repo_adoptions(repo, args.months)
+        return analyzer.get_repo_adoptions(repo, args.months)
+    
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {executor.submit(process_repo, repo): repo for repo in existing_repos}
+        for future in as_completed(futures):
+            repo = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f"  ❌ Error processing {repo.name}: {e}")
     
     # Calculate metrics
     print("\nCalculating adoption metrics...")
@@ -1046,8 +989,6 @@ def main():
     
     # Generate outputs
     print("\nGenerating outputs...")
-    analyzer.generate_timeline_csv()
-    analyzer.generate_comparison_csv(metrics)
     analyzer.generate_dashboard_data_json(metrics)
     analyzer.generate_html_dashboard(metrics)
     
